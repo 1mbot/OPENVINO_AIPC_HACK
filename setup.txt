@@ -1,0 +1,309 @@
+Here is the complete `setup.txt` file, with the second half formatted to match the structure of the first part.
+
+-----
+
+# \--------------------------------------------------------------------
+
+# OVERVIEW
+
+# \--------------------------------------------------------------------
+
+This setup guide outlines the complete pipeline for implementing the
+YOLO-based Smart Glasses for the Visually Impaired project.
+
+It covers
+
+  - Dataset curation using OIDv4 Toolkit
+  - Conversion to YOLO format
+  - Model training (PyTorch YOLOv8)
+  - Optimization (OpenVINO)
+  - Deployment on Raspberry Pi Zero (Client) and AIPC (Server)
+
+# \====================================================================
+
+# PROJECT: YOLO-based Smart Glasses for the Visually Impaired
+
+# STATUS: Implementation Pipeline Steps
+
+# \====================================================================
+
+# \====================================================================
+
+# PART A: DATA PREPARATION & MODEL TRAINING (Steps 1-4)
+
+# \====================================================================
+
+# \--------------------------------------------------------------------
+
+# 1\. SETUP & ENVIRONMENT PREPARATION
+
+# \--------------------------------------------------------------------
+
+1.1. **Clone the Repository:**
+\# Clone your main project repository (assuming it contains the OIDv4\_ToolKit)
+git clone [YOUR\_REPOSITORY\_URL]
+cd [YOUR\_PROJECT\_NAME]
+
+1.2. **Create and Activate Virtual Environment:**
+\# Create a virtual environment
+python3 -m venv venv
+\# Activate the environment
+source venv/bin/activate
+
+1.3. **Install OID ToolKit Dependencies:**
+\# Navigate to the toolkit directory and install required libraries
+cd OIDv4\_ToolKit
+pip install -r requirements.txt
+
+# \--------------------------------------------------------------------
+
+# 2\. DATASET CURATION (OID Download)
+
+# \--------------------------------------------------------------------
+
+# Download 5000 images for 16 specific classes from the OID training set.
+
+# NOTE: This command creates a separate folder for each class (default behavior).
+
+# WARNING: This command is missing --multiclasses 1 and --image\_IsGroupOf 0,
+
+# which MUST be accounted for by the conversion script in Step 3.
+
+2.1. **Execute OID Download:**
+python3 main.py downloader  
+\--Dataset ./OID/Dataset  
+\--classes "Person" "Car" "Bus" "Bicycle" "Motorcycle" "Traffic light" "Stop sign" "Chair" "Box" "Fire hydrant" "Door" "Window" "Laptop" "Mobile phone" "Book" "Human face"  
+\--type\_csv train  
+\--limit 5000  
+\--n\_threads 30  
+\-y
+
+2.2. **Download Location:**
+The raw downloaded images and OID labels are saved in the default multi-folder structure:
+./OID/Dataset/train/[CLASS\_NAME]/ and ./OID/Dataset/train/[CLASS\_NAME]/Labels/
+
+# \--------------------------------------------------------------------
+
+# 3\. DATASET CONVERSION (OID to YOLO Format)
+
+# \--------------------------------------------------------------------
+
+# The OID output (denormalized pixel coordinates, class name in TXT)
+
+# must be converted to the YOLO format (normalized coordinates, class ID in TXT).
+
+3.1. **Select Conversion Script:**
+Since the download in Step 2 resulted in dedicated folders for each class, the correct script to run is: **OID\_to\_YOLO\_single\_dir.py** (which is designed to loop through and merge multi-folder datasets).
+
+3.2. **Run Conversion:**
+\# Execute the conversion script from the OIDv4\_ToolKit directory
+python3 OID\_to\_YOLO\_single\_dir.py
+\# The script will store the images and labels in a YOLO-ready structure.
+
+3.3. **Conversion Output Formats:**
+\* **OID\_to\_YOLO\_single\_dir.py (Selected)**: Would have stored data in a unified format (`images/train`, `labels/train`)—use this if you re-run the download with `--multiclasses 1`.
+\* **OID\_to\_YOLO.py (Alternative)**:Converts data and stores it in the hierarchical format: `images/class_name` and `labels/class_name`. This may require further consolidation for Ultralytics YOLO training.
+
+# \--------------------------------------------------------------------
+
+# 4\. YOLO MODEL TRAINING
+
+# \--------------------------------------------------------------------
+
+4.1. **Upload Final Dataset:**
+Upload the completely converted and consolidated dataset directory (containing the `/images`, `/labels`, and `data.yaml` structure) to **Kaggle Datasets**.
+
+4.2. **Upload Training Notebook:**
+Upload the training notebook, **og-aipc-ok.ipynb**, to Kaggle.
+
+4.3. **Configure Kaggle Notebook:**
+Go to **Notebook Settings** and select **Accelerator** (for optimal performance, **2x T4 GPU** was used in the original training configuration).
+
+4.4 **Start Training:**
+\* You can directly run the notebook just add the dataset in your input directory
+
+4.5. **Resume Training:**
+The notebook code is designed to start new training and also to resume training.
+\* Download the provided checkpoint file (**last.pt** with 67 epochs) and add it to the notebook's input directory. (Testing or you can start training from scratch)
+\* The script will load this `last.pt` and **resume training until 80 epochs** are reached.
+
+# \====================================================================
+
+# PART B: SERVER DEPLOYMENT (AIPC / Windows) (Steps 5-11)
+
+# \====================================================================
+
+# \--------------------------------------------------------------------
+
+# 5\. WINDOWS (SERVER) ENVIRONMENT SETUP
+
+# \--------------------------------------------------------------------
+
+5.1. **Open PowerShell as Administrator:**
+\# Right-click the Windows icon
+\# Choose 'Terminal (Admin)' or 'Windows PowerShell (Admin)'
+\# Click 'Yes' on the User Account Control prompt.
+
+5.2. **Install Git:**
+winget install --id Git.Git -e --source winget
+
+5.3. **Verify Git Installation:**
+git --version
+// Should return a valid response, e.g.: git version 2.51.0.windows.1
+
+5.4. **Install Python 3.12:**
+winget install Python.Python.3.12.4
+
+5.5. **Verify Python Installation:**
+python --version
+// Should return: Python 3.12.4
+
+5.6. **Check PATH Variable (If necessary):**
+// If a different version of Python appears (e.g., from the Microsoft Store),
+// you must edit your system Environment Variables to place
+// 'C:\\Program Files\\Python312\\Scripts' and 'C:\\Program Files\\Python312'
+// *before* other Python paths.
+// The following steps assume you are in your user directory: C:\\Users\\xxx
+
+# \--------------------------------------------------------------------
+
+# 6\. PROJECT & VIRTUAL ENVIRONMENT (AIPC)
+
+# \--------------------------------------------------------------------
+
+6.1. **Clone the Deployment Repository:**
+git clone [https://github.com/1mbot/OPENVINO\_AIPC\_HACK.git](https://github.com/1mbot/OPENVINO_AIPC_HACK.git)
+// This will create the folder C:\\Users\\xxx\\OPENVINO\_AIPC\_HACK
+
+6.2. **Navigate to Project Directory:**
+cd OPENVINO\_AIPC\_HACK
+
+6.3. **Create Virtual Environment:**
+python -m venv venv
+// Alternative for a specific Python version: py -3.11 -m venv venv3.11
+
+6.4. **Activate Virtual Environment (PowerShell):**
+.\\venv\\Scripts\\Activate
+
+6.5. **Troubleshooting (PowerShell Execution Policy):**
+// If activation fails due to restricted execution policy, run:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+// Then re-run the activation command:
+.\\venv\\Scripts\\Activate
+// The PowerShell prompt should now be prefixed with \<venv\>, e.g.:
+// \<venv\> PS C:\\Users\\xxx\\OPENVINO\_AIPC\_HACK\>
+
+# \--------------------------------------------------------------------
+
+# 7\. INSTALL CORE INFERENCE LIBRARIES
+
+# \--------------------------------------------------------------------
+
+7.1. **Install Python Dependencies:**
+\# Ensure your \<venv\> is active
+pip install opencv-python
+pip install openvino
+pip install openvino-dev
+pip install onnx
+pip install ultralytics
+
+# \--------------------------------------------------------------------
+
+# 8\. RUNNING YOLOv8 INFERENCE (TESTS)
+
+# \--------------------------------------------------------------------
+
+# Assumes your YOLOv8 model (e.g., best.pt or OpenVINO IR format)
+
+# is correctly placed and paths are set in the scripts.
+
+8.1. **Run Static Image Inference (Script 1):**
+python openvino\_yolo8.py
+
+8.2. **Run Static Image Inference (Script 2):**
+python openvino\_yolo8\_10.py
+// Output will be stored in the 'detected images' folder.
+
+8.3. **Run Live Video Inference (Visual Only):**
+python openvino\_videolive.py
+// Starts the camera and performs live detection (YOLOv8 model).
+
+8.4. **Run Live Video Inference (with Audio Feedback):**
+python openvino\_audiovideolive.py
+// Starts the camera, performs detection, and speaks the detected object class.
+
+# \--------------------------------------------------------------------
+
+# 9\. SETUP - FACE RECOGNITION (ArcFace Model)
+
+# \--------------------------------------------------------------------
+
+9.1. **Install Face Recognition Dependencies:**
+pip install deepface
+pip install tf-keras
+pip install pyyaml
+
+9.2. **Create Model Directory:**
+mkdir face\_recognition
+
+9.3. **Download ArcFace Model (ONNX):**
+omz\_downloader --name face-recognition-resnet100-arcface-onnx
+
+9.4. **Convert Model to OpenVINO IR (OMZ):**
+omz\_converter --name face-recognition-resnet100-arcface-onnx --output\_dir face\_recognition --model\_name face\_recognition
+
+9.5. **Convert Model (Manual Model Optimizer):**
+\# This is an alternative/manual way to convert the downloaded ONNX file
+mo --input\_model public/face-recognition-resnet100-arcface-onnx/arcfaceresnet100-8.onnx --output\_dir face\_recognition --model\_name face\_recognition
+
+# \--------------------------------------------------------------------
+
+# 10\. RUNNING - FACE RECOGNITION & EMBEDDING
+
+# \--------------------------------------------------------------------
+
+# These scripts manage a database of face embeddings (in a .pkl file).
+
+10.1. **Add Faces from Static Images:**
+\# Stores embeddings from images in a specified folder
+python add\_faces.py
+
+10.2. **Run Audio/Video (Face Rec Only):**
+\# Detects faces and identifies them from stored embeddings
+python openvino\_audiovideo.py
+
+10.3. **Run Real-time Embedding (YOLOv8):**
+python openvino\_realtimeembeddings\_yolo8.py
+
+10.4. **Create Embeddings (from Video):**
+\# Stores embeddings by analyzing a video file
+\# (Allows for varied angles: up/down/left/right)
+python all\_faces\_video.py
+
+10.5. **Run Live Audio/Video (YOLO + Face Rec):**
+python openvino\_yolo8\_audiovideolive\_video.py
+
+10.6. **Main Embedding Collector (Interactive):**
+\# Runs live feed, asks for input to store embeddings
+python openvino\_yolo8\_main\_embeddings.py
+// Press 's' to store an image embedding
+// Press 'a' to store embeddings from a video capture
+
+10.7. **Main Embedding Collector (Video):**
+python openvino\_yolo8\_main\_embeddings\_video.py
+
+# \--------------------------------------------------------------------
+
+# 11\. ALTERNATIVE - HUGGING FACE MODEL (Face Rec)
+
+# \--------------------------------------------------------------------
+
+# Uses a different model for face recognition, which is noted
+
+# to be better and less sensitive than the ArcFace/ResNet model.
+
+11.1. **Install Hugging Face Hub Dependency:**
+pip install huggingface\_hub
+
+11.2. **Run Hugging Face Inference Script:**
+python openvino\_main\_huggingface.py
